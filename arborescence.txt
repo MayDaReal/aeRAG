@@ -1,0 +1,71 @@
+Structure du dossier
+Le numéro de série du volume est C896-D7AD
+C:.
+|   .env
+|   arborescence.txt
+|   local_server.log
+|   main.py
+|   requirements.txt
+|   
++---chunks
+|   |   abstract_chunking_strategy.py
+|   |   chunking_strategy_factory.py
+|   |   code_chunking_strategy.py
+|   |   text_chunking_strategy.py
+|   |   __init__.py
+|           
++---collectors
+|   |   github_collector copy.py
+|   |   github_collector.py
+|   |   github_commits.py
+|   |   github_files.py
+|   |   github_issues.py
+|   |   github_pull_requests.py
+|   |   github_request.py
+|   |   __init__.py
+|   |   
+|           
++---core
+|   |   database_manager.py
+|   |   file_storage_manager.py
+|   |   rag_engine.py
+|   |   __init__.py
+|   |   
+|           
++---embeddings
+|   |   embeddings.py
+|   |   __init__.py
+|   |   
+|           
++---keywords_extractors
+|   |   keywords_extractors.py
+|   |   __init__.py
+|   |   
+|           
++---LLMs
+|       L5-small_llm.py
+|       llm_interface.py
+|       llm_manager.py
+|       mistral_llm.py
+|       __init__.py
+|                       
++---metadata
+|   |   metadata_generator.py
+|   |   metadata_manager.py
+|   |   metadata_utils.py
+|   |   __init__.py
+|   |   
+|           
++---server
+|   |   local_storage_server.py
+|   |   __init__.py
+|   |   
+|           
++---summarizers
+|   |   summarizers.py
+|   |   __init__.py
+|   |   
+|           
+\---tests
+        __init__.py
+        

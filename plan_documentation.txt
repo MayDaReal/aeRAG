@@ -1,0 +1,160 @@
+
+### 1. Introduction
+- **Context and Project Origin**  
+  - Briefly describe Archethic and the motivation for building a Retrieval-Augmented Generation (RAG) system.
+  - Highlight the importance of bridging LLMs with curated, project-specific data.
+
+- **Main Objective**  
+  - Clarify the purpose: Provide a robust, extensible RAG pipeline capable of collecting, indexing, and retrieving relevant information to feed a Large Language Model.
+
+- **Scope of the Document**  
+  - Emphasize that this document focuses on (1) architecture overview, (2) current implementation details, and (3) future developments like vector indexing and advanced retrieval strategies.
+
+### 2. Requirements and Use Cases
+- **Functional Requirements**
+  1. **Data Collection** from GitHub repositories (commits, issues, pull requests, code, documentation, etc.).
+  2. **Data Organization and Indexing** in MongoDB (and potentially vector databases) for efficient retrieval.
+  3. **Conversational Access** via a chatbot interface; in the future, an API-based interface.
+  4. **Modular and Extensible** design to allow quick integration of new data sources, new LLMs, and additional functionalities.
+  5. **Logging and Monitoring** to track usage, debug issues, and measure performance.
+  6. **Testing** (unit tests and non-regression tests) for continuous improvement and system reliability.
+
+- **Non-Functional Requirements**
+  - **Performance** (low latency, efficient data retrieval, scalable architecture).
+  - **Maintainability** (clean code, design patterns, and adherence to Robert C. Martin’s “Clean Code” principles).
+  - **Portability** (easy to deploy locally on a dedicated server or migrate to the cloud if needed).
+
+- **User Scenarios**
+  - Initial local chatbot usage for dev teams.
+  - Potential API usage for automated agents or other front-end applications.
+  - Support for multiple LLM backends (Mistral, DeepSeek, OpenAI, Claude, etc.).
+
+### 3. High-Level Architecture
+- **Overall RAG Pipeline**  
+  1. **Data Collection** (GitHub-based or other future sources).  
+  2. **Data Storage** (MongoDB for structured data, local or remote file storage for raw documents).  
+  3. **Document Chunking** (code-oriented vs. text-oriented strategies).  
+  4. **Vectorization** (embedding each chunk with SentenceTransformers or other embedding models).  
+  5. **Vector Database Indexing** (planned: Faiss, LlamaIndex, or other solutions).  
+  6. **Retrieval & RAG Engine** (core logic to find the most relevant chunks based on user query).  
+  7. **LLM Integration** (chatbot or API endpoint that orchestrates calls to the RAG engine).
+
+- **Key Components**
+  - **Collectors (GitHub)**: Modules that fetch commits, issues, pull requests, branches, etc.
+  - **Core**:  
+    - `DatabaseManager` (MongoDB connection and indexing logic).  
+    - `FileStorageManager` (handles large files, local server).  
+  - **Chunks**:  
+    - Strategies for splitting code/text, plus a factory to select the right approach.  
+  - **Metadata**:  
+    - Embeddings, summarizations, keywords, etc. (managing chunk creation and indexing).  
+  - **LLMs**:  
+    - Interface for Mistral, DeepSeek, or other LLMs.  
+  - **Server**:  
+    - A simple local HTTP server for serving stored files (and eventually the chatbot endpoint).
+  - **Tests**:  
+    - Unit tests and future non-regression tests.
+
+### 4. Current Implementation Details
+1. **GitHub Data Pipeline**  
+   - `GitHubCollector` orchestrates fetching commits, files, issues, PRs.  
+   - Each type of data is stored in dedicated MongoDB collections (e.g., `commits`, `issues`, `pull_requests`).
+
+2. **MongoDB Storage**  
+   - Collections for commits, PRs, issues, main files, last release files, etc.  
+   - Automatic index creation upon initialization (date-based indices, text-based indices, etc.).
+
+3. **Chunking Logic**  
+   - Two main strategies:
+     - **TextChunkingStrategy** (with overlap-based splitting).  
+     - **CodeChunkingStrategy** (splits around functions, imports, classes, etc. for various languages).
+   - `ChunkingStrategyFactory` determines the appropriate approach based on file type.
+
+4. **Embeddings and Metadata**  
+   - `SentenceTransformerEmbeddingModel` for embedding generation.  
+   - `T5Summarizer` for text summaries.  
+   - `YakeKeywordExtractor` for keywords.  
+   - Output is stored in `metadata` and `chunks` collections.
+
+5. **Local HTTP Server**  
+   - Serves files and logs.  
+   - Can be extended to serve a chatbot or REST API.
+
+6. **CLI Tool (`main.py`)**  
+   - Interactive menu to list repos, update data, start/stop local server, run metadata updates, etc.  
+   - Future expansions: launching RAG queries or generating embeddings for new data on-demand.
+
+### 5. Technical Proposals for Next Steps
+1. **Vector Database Integration**  
+   - **Why**: Storing embeddings in specialized vector DBs (e.g., Faiss, LlamaIndex, Milvus, Chroma) can greatly improve similarity search and retrieval performance.  
+   - **How**: 
+     - After generating embeddings, push the vectors (and chunk IDs) into the vector database.  
+     - Retrieve top-k similar vectors for each user query.  
+     - Keep MongoDB as a system of record for metadata, but rely on Faiss/LlamaIndex for fast vector searches.
+
+2. **Advanced Retrieval Logic**
+   - **Fallback Check**:  
+     - For each user query, decide whether the question needs RAG-based retrieval or if the base LLM is sufficient.  
+     - This can reduce latency for questions that do not require external knowledge.
+   - **SQL-based Retrieval**:  
+     - Another approach is to interpret user queries as SQL or MongoDB queries, retrieving relevant documents.  
+     - The LLM could be prompted to generate a structured query for advanced filtering or search.
+   - **Complex Query Planning**:  
+     - In more elaborate setups, the LLM can reason about which data is needed (commits, issues, PR details) and orchestrate multi-step retrieval from the knowledge base before producing the final answer.
+
+3. **Improving Latency**  
+   - Caching query results or partial embeddings.  
+   - Using approximate nearest neighbor (ANN) indexing in Faiss or LlamaIndex.  
+   - Potentially dividing the corpus into specialized domains so that retrieval is parallelized or subset-based.
+
+4. **Integration with Mistral / DeepSeek**  
+   - Provide a local inference endpoint on your dedicated server.  
+   - Possibly load balanced or containerized for higher throughput.  
+   - Let the user configure alternative LLMs (OpenAI, Anthropic’s Claude, Google Gemini, etc.) with environment variables or a config file.
+
+5. **Enhanced Logging and Monitoring**  
+   - Define a consistent log format (e.g., JSON lines).  
+   - Store user queries, response times, retrieval steps, etc. for debugging and analytics.  
+   - Provide basic monitoring dashboards or log analysis tools.
+
+6. **Testing Strategy**  
+   - Expand unit tests to cover each module (collectors, chunking, embeddings, etc.).  
+   - Add **non-regression tests** (integration tests) that check the end-to-end pipeline.  
+   - Periodically retrain or re-index to ensure the pipeline remains consistent with new data sources.
+
+### 6. Roadmap and Priorities
+- **Immediate Goals**  
+  - Integrate a simple vector store (e.g., Faiss) to validate improved retrieval speeds.  
+  - Improve logging (structured logs, set up rotating logs, or store logs in a dedicated collection).  
+  - Implement an MVP of the “fallback check” logic for queries that don’t require RAG.
+
+- **Mid-Term Goals**  
+  - Offer an HTTP/REST API that wraps the chatbot logic (beyond the CLI).  
+  - Expand test coverage, focusing on non-regression tests with real-world usage scenarios.  
+  - Experiment with more advanced retrieval planning (multi-step reasoning or chain-of-thought type queries).
+
+- **Long-Term Goals**  
+  - Migrate to cloud-based hosting if/when the project scales or as needed for heavier concurrency.  
+  - Integrate additional data sources (e.g., official documentation, knowledge bases, forums, etc.).  
+  - Optimize for multi-modal data (images, PDFs with OCR, videos with transcription, etc.).
+
+### 7. Conclusion
+- **Final Thoughts**  
+  - Summarize the project’s progress (complete data pipeline, partial RAG engine) and next big wins (vector indexing, advanced retrieval strategies).  
+  - Re-emphasize the importance of modularity and a clean-code approach, ensuring easy maintenance and extensibility.
+
+- **References**  
+  - MongoDB documentation.  
+  - Faiss, LlamaIndex, Milvus, etc.  
+  - T5 Summarizer or any alternative summarization approach.  
+  - Mistral, DeepSeek, and other LLM references.
+
+### 8. Appendices (Optional)
+- **Code Samples and Snippets**  
+  - Provide example code for index creation, chunk splitting, etc.  
+- **Clean Code Principles**  
+  - Quick reference to SOLID, DRY, etc.  
+- **Additional Diagrams or UML**  
+  - Class diagrams for `GitHubCollector`, chunking strategies, etc.
+
+---
