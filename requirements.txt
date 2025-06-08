@@ -16,3 +16,4 @@ tiktoken
 protobuf
 sentencepiece
 faiss-cpu
+pytest

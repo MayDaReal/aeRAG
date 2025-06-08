@@ -53,9 +53,9 @@ def load_configuration():
     
     for var in required_vars:
         if not os.getenv(var):
-            print(f"⚠️ Warning: Environment variable {var} is not set!")
+            print(f"Warning: Environment variable {var} is not set!")
 
-    print("✅ Environment variables loaded successfully.")
+    print("Environment variables loaded successfully.")
 
 def run_main_loop():
     """
@@ -106,7 +106,7 @@ def run_main_loop():
             else:
                 print("[!] Invalid choice.")
     except KeyboardInterrupt:
-        print("\n🛑 KeyboardInterrupt detected. Stopping all processes...")
+        print("\n KeyboardInterrupt detected. Stopping all processes...")
     finally:
         cmd_stop_local_server()  # Ensure the server stops before exit
 
@@ -154,11 +154,11 @@ def cmd_list_github_repos(mongo_uri: str, db_name: str, storage_manager: FileSto
     repos = collector.fetch_repositories()
 
     if repos:
-        print(f"\n✅ Retrieved {len(repos)} repositories for '{org}':")
+        print(f"\n Retrieved {len(repos)} repositories for '{org}':")
         for r in repos:
             print(" -", r)
     else:
-        print(f"\n⚠️ No repositories found for '{org}' or an error occurred.")
+        print(f"\n No repositories found for '{org}' or an error occurred.")
 
 
 def cmd_update_org_data(mongo_uri: str, db_name: str, storage_manager: FileStorageManager):
@@ -176,9 +176,9 @@ def cmd_update_org_data(mongo_uri: str, db_name: str, storage_manager: FileStora
     db_manager = DatabaseManager(mongo_uri, db_name)
     collector = GitHubCollector(db_manager, token, org, storage_manager)
 
-    print(f"🔄 Updating all repositories in {org}...")
+    print(f"Updating all repositories in {org}...")
     collector.update_all_repos()
-    print("✅ Organization data update complete.")
+    print("Organization data update complete.")
 
 def cmd_update_repos_data(mongo_uri: str, db_name: str, storage_manager: FileStorageManager):
     """
@@ -200,9 +200,9 @@ def cmd_update_repos_data(mongo_uri: str, db_name: str, storage_manager: FileSto
     db_manager = DatabaseManager(mongo_uri, db_name)
     collector = GitHubCollector(db_manager, token, org, storage_manager)
 
-    print(f"🔄 Updating selected repositories: {repos}")
+    print(f"Updating selected repositories: {repos}")
     collector.update_selected_repos(repos)
-    print("✅ Repository data update complete.")
+    print("Repository data update complete.")
 
 def cmd_update_multiple_repos_specific_data(mongo_uri: str, db_name: str, storage_manager: FileStorageManager):
     """
@@ -238,9 +238,9 @@ def cmd_update_multiple_repos_specific_data(mongo_uri: str, db_name: str, storag
     db_manager = DatabaseManager(mongo_uri, db_name)
     collector = GitHubCollector(db_manager, token, org, storage_manager)
 
-    print(f"🔄 Updating {selected_data} for repositories: {repos}")
+    print(f"Updating {selected_data} for repositories: {repos}")
     collector.update_multiple_repos_specific_data(repos, selected_data)
-    print("✅ Data update complete.")
+    print("Data update complete.")
 
 def cmd_update_metadata_multiple_repos_specific_data(mongo_uri: str, db_name: str, storage_manager: FileStorageManager):
     """
@@ -299,7 +299,7 @@ def cmd_start_local_server():
     global server_process
 
     if server_process and server_process.is_alive():
-        print("⚠️ Local storage server is already running.")
+        print("Local storage server is already running.")
         return
     
     # Retrieve port from .env, ensuring it is a valid integer
@@ -314,18 +314,18 @@ def cmd_start_local_server():
         port_input = input("Port to serve on (default: 8000): ").strip()
         if not port_input or not port_input.isdigit(): 
             port = 8000
-            print("⚠️ Invalid port. So default port 8000 applied.")
+            print("Invalid port. So default port 8000 applied.")
 
     storage_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), os.getenv("LOCAL_STORAGE_PATH", "local_storage"))
 
-    print(f"\n🚀 Starting local storage server on port {port}, serving '{storage_path}' ...")
-    print("📜 Server logs are being saved to 'local_server.log'. You can check logs anytime.")
+    print(f"\nStarting local storage server on port {port}, serving '{storage_path}' ...")
+    print("Server logs are being saved to 'local_server.log'. You can check logs anytime.")
 
     # Start server process without passing the log file
     server_process = multiprocessing.Process(target=start_server_process, args=(port, storage_path))
     server_process.start()
     
-    print("[✅] Local storage server started in the background.")
+    print("[OK] Local storage server started in the background.")
 
 def start_server_process(port, storage_directory):
     """
@@ -348,13 +348,13 @@ def cmd_stop_local_server():
     global server_process
 
     if server_process and server_process.is_alive():
-        print("🛑 Stopping local storage server...")
+        print("Stopping local storage server...")
         server_process.terminate()
         server_process.join()
         server_process = None
-        print("[✅] Local storage server stopped.")
+        print("[OK] Local storage server stopped.")
     else:
-        print("⚠️ No active local storage server to stop.")
+        print("No active local storage server to stop.")
 
 def cmd_view_local_server_logs():
     """
@@ -363,10 +363,10 @@ def cmd_view_local_server_logs():
     log_file_path = "local_server.log"
 
     if not os.path.exists(log_file_path):
-        print("⚠️ No log file found. The server may not have been started yet.")
+        print("No log file found. The server may not have been started yet.")
         return
 
-    print("\n📜 Last 10 lines of 'local_server.log':\n")
+    print("\nLast 10 lines of 'local_server.log':\n")
     
     with open(log_file_path, "r") as log_file:
         lines = log_file.readlines()
