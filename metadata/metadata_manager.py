@@ -38,8 +38,9 @@ class MetadataManager:
             repos (List[str]): List of gitHub repositories to update.
             selected_data (List[str]): Collections to update (e.g., ['files', 'main_files', 'last_release_files', 'commits', 'pull_requests', 'issues']).
         """
+        formatted_data = [{"collection_src": c} for c in selected_data]
         for repo in repos:
-            self.update_metadata_for_specific_data(repo, selected_data)
+            self.update_metadata_for_specific_data(repo, formatted_data)
 
     def update_metadata_for_specific_data(self, repo: str, selected_data: List[Dict]):
         """
@@ -50,7 +51,12 @@ class MetadataManager:
             collections (List[str]): Collections to update (e.g., ['files', 'commits', 'issues']).
         """
         
-        for collection in selected_data:
-            print(f"🔄 Updating metadata for '{repo}', collection '{collection}'...")
-            self.metadata_generator.update_metadata_for_collection(repo, self.db_manager.db[collection], collection)
-            print(f"✅ Metadata update completed for {collection} in {repo}.")
+        for entry in selected_data:
+            collection_name = entry["collection_src"]
+            print(f"🔄 Updating metadata for '{repo}', collection '{collection_name}'...")
+            self.metadata_generator.update_metadata_for_collection(
+                repo,
+                self.db_manager.db[collection_name],
+                collection_name
+            )
+            print(f"✅ Metadata update completed for {collection_name} in {repo}.")

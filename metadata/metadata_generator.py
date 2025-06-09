@@ -4,6 +4,7 @@ Generates metadata for files: chunking, embeddings, summarization, etc.
 """
 
 from typing import Dict, Any
+from pymongo.collection import Collection
 from core.database_manager import DatabaseManager
 from core.file_storage_manager import FileStorageManager
 from embeddings.embeddings import AbstractEmbeddingModel
@@ -61,7 +62,7 @@ class MetadataGenerator:
 
         return ""
 
-    def update_metadata_for_collection(self, repo : str, db_collection: Dict[str, Any], collection_src: str) -> None:
+    def update_metadata_for_collection(self, repo : str, db_collection: Collection, collection_src: str) -> None:
         """
         Updates metadata for all documents in a given collection, filtering by repo if needed.
         
@@ -103,7 +104,7 @@ class MetadataGenerator:
         """
         file_url = collection_item.get("external_url")
         if file_url:
-            return self.file_storage.fetch_file_content(file_url)
+            return self.file_storage.fetch_file_content(file_url) or ""
         return collection_item.get("patch", "").strip()  # Fallback if no external file is available
 
     def _extract_text_from_commits(self, collection_item: Dict[str, Any]) -> str:

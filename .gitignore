@@ -5,6 +5,9 @@ __pycache__/
 .env
 *.env
 local_storage/
+mistral_local/
+resources/
+readme_v1.md
 *.faiss
 *.log
 

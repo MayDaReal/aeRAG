@@ -7,17 +7,21 @@ import os
 import requests
 from typing import Optional
 
+DEFAULT_TIMEOUT_S = 10
+
 class FileStorageManager:
     """Handles local file storage operations and retrieval of file content."""
 
-    def __init__(self, base_storage_path: str, base_url: str):
+    def __init__(self, base_storage_path: str, base_url: str, http_timeout: float = DEFAULT_TIMEOUT_S):
         """
         Initializes the FileStorageManager.
 
         Args:
             base_storage_path (str): The root directory where files are stored locally.
             base_url (str): The base URL for serving files over HTTP.
+            http_timeout (float): The HTTP timeout used for each request.
         """
+        self.http_timeout = http_timeout
         self.base_storage_path = os.path.abspath(base_storage_path)
         self.base_url = base_url
 
@@ -81,7 +85,7 @@ class FileStorageManager:
             Optional[str]: The content of the file if successful, otherwise None.
         """
         try:
-            response = requests.get(url, timeout=10)
+            response = requests.get(url, timeout=self.http_timeout)
             if response.status_code == 200:
                 return response.text
         except Exception as e:
