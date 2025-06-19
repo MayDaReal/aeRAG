@@ -36,7 +36,7 @@ def fetch_pull_requests(db_manager: DatabaseManager, repo: str, storage_manager:
             pr_id = f"{repo}_{pr['number']}"
             existing_pr = db_manager.db.pull_requests.find_one({'_id': pr_id})
 
-            # Stocke le corps du PR en local (évite de surcharger MongoDB)
+            # Store PR locally (avoids overloading MongoDB)
             body_url = None
             if pr.get("body"):
                 body_url = storage_manager.store_file_content(

@@ -10,14 +10,20 @@ import sys
 # Import managers and classes
 from core.database_manager import DatabaseManager
 from core.file_storage_manager import FileStorageManager
+from core.faiss_index_manager import FaissIndexManager
 from collectors.github_collector import GitHubCollector
 from metadata.metadata_manager import MetadataManager
+from rag.rag_engine import RAGEngine
+from embeddings.embeddings import SentenceTransformerEmbeddingModel
+from utils.cli_helpers import ask_repo, select_collection_interactively, ask_question, ask_top_k
 
 import multiprocessing
 from server.local_storage_server import LocalStorageServer
 
-# from models.llm_manager import LLMManager
-# from models.llm_interface import ILLM
+from LLMs.llm_manager import LLMManager
+from LLMs.llm_interface import ILLM
+from rag.query_recorder import RAGQueryRecorder
+from typing import (Optional)
 
 # Global variable to track server process
 server_process = None
@@ -39,6 +45,7 @@ def interactive_menu():
     print("10) Generate/Update metadata for selected repositories and selected collections (TODO test)")
     print("11) Run unit tests (not implemented yet)")
     print("12) Start chat with the LLM (not implemented yet)")
+    print("13) Query RAG with Faiss")
     print("0) Exit (Test OK)")
     choice = input("Enter your choice: ")
     return choice.strip()
@@ -70,6 +77,8 @@ def run_main_loop():
     local_storage_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), os.getenv("LOCAL_STORAGE_PATH", "local_storage"))
     base_url = os.getenv("BASE_URL", f"http://localhost:{os.getenv('PORT', 8000)}")
     storage_manager = FileStorageManager(base_storage_path=local_storage_path, base_url=base_url)
+    embedding_model = SentenceTransformerEmbeddingModel()
+    recorder = RAGQueryRecorder("experiments/rag_benchmark.jsonl")
 
     try:
         while True:
@@ -100,6 +109,8 @@ def run_main_loop():
                 cmd_run_tests()
             elif choice == "12":
                 cmd_start_chat()
+            elif choice == "13":
+                cmd_rag_query(mongo_uri, db_name, embedding_model, recorder)
             elif choice == "0":
                 print("Goodbye!")
                 break
@@ -260,21 +271,7 @@ def cmd_update_metadata_multiple_repos_specific_data(mongo_uri: str, db_name: st
         repos_input = input("Enter repositories (space-separated): ").strip()
     repos = repos_input.split()
 
-    options = {
-        "1": "files",
-        "2": "main_files",
-        "3": "last_release_files",
-        "4": "commits",
-        "5": "pull_requests",
-        "6": "issues"
-    }
-
-    print("\nSelect the data to update:")
-    for key, value in options.items():
-        print(f"{key}) {value}")
-
-    choices = input("Enter numbers separated by spaces (e.g., '1 3'): ").split()
-    selected_data = [options[choice] for choice in choices if choice in options]
+    selected_data = select_collection_interactively()
 
     db_manager = DatabaseManager(mongo_uri, db_name)
     metadata_manager = MetadataManager(db_manager, storage_manager)
@@ -398,6 +395,66 @@ def cmd_start_chat(llm):
         # Optionally we could pass context from RAG retrieval, etc.
         answer = llm.chat(user_input, context=None)
         print("Bot:", answer)
+
+def cmd_rag_query(mongo_uri: str, db_name: str, embedding_model: SentenceTransformerEmbeddingModel, recorder: Optional[RAGQueryRecorder] = None):
+    """
+    Ask the user a natural-language question, retrieve the top-k chunks
+    with Faiss, and generate an LLM answer.
+    Falls back to .env defaults for repo/collection if present.
+    """
+    repo = ask_repo(os.getenv("GITHUB_REPOS", "").strip())
+    collections = select_collection_interactively()
+    if not collections:
+        print("No collection selected, cancelling.")
+        return
+
+    db_manager = DatabaseManager(mongo_uri, db_name, create_indexes=False)
+
+    llm_model_type = os.getenv("LLM_MODEL_TYPE", "local-llama")
+    llm_model_path = os.getenv("LLM_MODEL_PATH", "models/mistral-7b-instruct.Q4_K.gguf").strip()
+    llm = LLMManager.load_llm(
+        llm_model_type,
+        {
+            "model_path": llm_model_path,
+            "gpu_layers": os.getenv("LLM_GPU_LAYERS", "0"),
+        },
+    )
+
+    # Build / load Faiss index
+    index_mgr = FaissIndexManager(db_manager)
+
+    for collection in collections:
+        print(f"\n[Collection: {collection}]")
+        try:
+            index_mgr.load_index(repo, collection)
+        except FileNotFoundError:
+            print("[RAG] Index not found, building…")
+            try:
+                index_mgr.build_index(repo, [collection], force=True)
+            except ValueError as ve:
+                print(f"[RAG] No embeddings found for collection '{collection}'. Skipping.")
+                continue
+        
+        print(f"[RAG] Loaded or built index for collection '{collection}'.")
+
+        question = ask_question()
+        top_k = ask_top_k()
+
+        # Instantiate RAG engine on-the-fly
+        rag = RAGEngine(
+            index_mgr=index_mgr,
+            embedding_model=embedding_model,
+            generative_llm=llm,
+            repo=repo,
+            collection_src=collection,
+            query_recorder=recorder
+        )
+
+        # Get answer
+        print("\n[Retrieving + generating…]\n")
+        answer = rag.answer_query(question, top_k=top_k)
+        print("\n--- ANSWER ---\n")
+        print(answer)
 
 # def cmd_analyze_logs(llm: ILLM):
 def cmd_analyze_logs(llm):

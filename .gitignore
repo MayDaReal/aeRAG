@@ -10,6 +10,7 @@ resources/
 readme_v1.md
 *.faiss
 *.log
+experiments/
 
 # Environnement
 .venv/
